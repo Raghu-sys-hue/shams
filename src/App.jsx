@@ -5,7 +5,6 @@ import { Hero } from './components/Hero';
 import { Philosophy } from './components/Philosophy';
 import { Explore } from './components/Explore';
 import { ThemeStudy } from './components/ThemeStudy';
-import { Contact } from './components/Contact';
 import { Footer } from './components/Footer';
 import { ToastContainer } from './components/ToastContainer';
 import { Loader } from './components/Loader';
@@ -28,9 +27,6 @@ export function App() {
       <Loader isLoaded={isLoaded} />
       <ScrollProgress progress={scrollProgress} />
       <div className="hero-bg" aria-hidden="true">
-        <div className="orb orb-1" aria-hidden="true"></div>
-        <div className="orb orb-2" aria-hidden="true"></div>
-        <div className="orb orb-3" aria-hidden="true"></div>
         <div className="grid-pattern" aria-hidden="true"></div>
       </div>
       <div className="noise-overlay" aria-hidden="true"></div>
@@ -41,10 +37,9 @@ export function App() {
         <Philosophy />
         <Explore />
         <ThemeStudy />
-        <Contact />
         <Footer />
       </main>
-      <ToastContainer toasts={toasts} />
+      <ToastContainer />
     </>
   );
 }

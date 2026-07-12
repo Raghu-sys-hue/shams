@@ -6,7 +6,6 @@ const navLinks = [
   { label: 'ABOUT', href: '#philosophy' },
   { label: 'EXPLORE', href: '#explore' },
   { label: 'THEMES', href: '#theme-study' },
-  { label: 'CONTACT', href: '#contact' },
   { label: 'LISTEN', href: '#listen' },
 ];
 

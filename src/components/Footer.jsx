@@ -36,59 +36,113 @@ const episodes = [
   },
 ];
 
+// Replace with your actual audio files
+// For the YouTube link provided (https://youtu.be/N2-HsIYd0Go), you'll need to download the audio
+// and host it yourself, or use a service that provides direct audio URLs.
+// YouTube does not allow direct audio streaming due to CORS and terms of service.
 const playerTracks = [
-  { id: 1, title: 'Reflection (Track 2)', artist: 'MP3', duration: 180, color: 'from-purple-500 to-pink-500' },
-  { id: 2, title: 'Morning Dew', artist: 'WAV', duration: 240, color: 'from-blue-500 to-cyan-500' },
-  { id: 3, title: 'Heartbeat Symphony', artist: 'FLAC', duration: 300, color: 'from-rose-500 to-red-500' },
+  { 
+    id: 1, 
+    title: 'Ethereal Echoes', 
+    artist: 'MP3', 
+    duration: 240, 
+    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    color: 'from-purple-500 to-pink-500' 
+  },
+  { 
+    id: 2, 
+    title: 'Reflection (Track 2)', 
+    artist: 'WAV', 
+    duration: 180, 
+    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    color: 'from-blue-500 to-cyan-500' 
+  },
+  { 
+    id: 3, 
+    title: 'Morning Dew', 
+    artist: 'FLAC', 
+    duration: 300, 
+    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    color: 'from-rose-500 to-red-500' 
+  },
 ];
 
 export function Footer() {
   const [currentTrack, setCurrentTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
   const [isMuted, setIsMuted] = useState(false);
+  const audioRef = useRef(null);
   const progressRef = useRef(null);
-  const animationRef = useRef(null);
   const waveformRef = useRef(null);
 
+  // Update audio src when track changes
   useEffect(() => {
-    if (isPlaying) {
-      animationRef.current = requestAnimationFrame(updateProgress);
-    } else {
-      cancelAnimationFrame(animationRef.current);
+    if (audioRef.current) {
+      audioRef.current.src = playerTracks[currentTrack].src;
+      audioRef.current.load();
+      setIsPlaying(false);
+      setProgress(0);
+      setCurrentTime(0);
     }
-    return () => cancelAnimationFrame(animationRef.current);
-  }, [isPlaying]);
+  }, [currentTrack]);
 
-  const updateProgress = () => {
-    const track = playerTracks[currentTrack];
-    const increment = (1 / track.duration) * 100 / 60;
-    setProgress((prev) => {
-      const next = prev + increment;
-      if (next >= 100) {
-        setIsPlaying(false);
-        return 0;
-      }
-      return next;
-    });
-    animationRef.current = requestAnimationFrame(updateProgress);
+  // Audio event handlers
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      setProgress(audio.duration ? (audio.currentTime / audio.duration) * 100 : 0);
+    };
+    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setProgress(0);
+      setCurrentTime(0);
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+    audio.volume = isMuted ? 0 : volume;
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [isMuted, volume]);
+
+  // Volume change
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume;
+    }
+  }, [isMuted, volume]);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play().catch(() => {});
+    }
+    setIsPlaying(!isPlaying);
   };
 
   const handleProgressClick = (e) => {
-    if (!progressRef.current) return;
+    if (!progressRef.current || !audioRef.current) return;
     const rect = progressRef.current.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
-    setProgress(Math.max(0, Math.min(100, percent * 100)));
+    audioRef.current.currentTime = percent * audioRef.current.duration;
   };
 
-  const handleSeek = (e) => {
-    setProgress(Math.max(0, Math.min(100, parseFloat(e.target.value))));
-  };
-
-  const togglePlay = () => setIsPlaying(!isPlaying);
-  const nextTrack = () => setCurrentTrack((prev) => (prev + 1) % playerTracks.length);
-  const prevTrack = () => setCurrentTrack((prev) => (prev - 1 + playerTracks.length) % playerTracks.length);
   const toggleMute = () => setIsMuted(!isMuted);
   const handleVolumeChange = (e) => {
     const vol = parseFloat(e.target.value);
@@ -96,10 +150,14 @@ export function Footer() {
     setIsMuted(vol === 0);
   };
 
+  const nextTrack = () => setCurrentTrack((prev) => (prev + 1) % playerTracks.length);
+  const prevTrack = () => setCurrentTrack((prev) => (prev - 1 + playerTracks.length) % playerTracks.length);
+
   const formatTime = (seconds) => {
+    if (isNaN(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
   };
 
   return (
@@ -137,6 +195,16 @@ export function Footer() {
                 <img src={episode.image} alt="" className="episode-image cover" loading="lazy" />
                 <motion.button
                   className="episode-play-overlay"
+                  onClick={() => {
+                    setCurrentTrack(index);
+                    // Auto-play when clicking episode
+                    setTimeout(() => {
+                      if (audioRef.current) {
+                        audioRef.current.play().catch(() => {});
+                        setIsPlaying(true);
+                      }
+                    }, 100);
+                  }}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                   aria-label={`Play ${episode.title}`}
@@ -165,6 +233,13 @@ export function Footer() {
           viewport={{ once: true, margin: '-100px' }}
           transition={{ duration: 0.6, delay: 0.5 }}
         >
+          <audio
+            ref={audioRef}
+            src={playerTracks[currentTrack].src}
+            preload="metadata"
+            crossOrigin="anonymous"
+          />
+          
           <div className="player-thumbnail">
             <div className="waveform-container" ref={waveformRef}>
               <Waveform bars={64} color="white" />
@@ -179,8 +254,12 @@ export function Footer() {
               {playerTracks[currentTrack].artist}
             </span>
             <div className="player-progress-wrapper" ref={progressRef} onClick={handleProgressClick} role="slider" aria-label="Playback progress" tabIndex={0} onKeyDown={(e) => {
-              if (e.key === 'ArrowRight') setProgress(Math.min(100, progress + 5));
-              if (e.key === 'ArrowLeft') setProgress(Math.max(0, progress - 5));
+              if (e.key === 'ArrowRight' && audioRef.current) {
+                audioRef.current.currentTime = Math.min(audioRef.current.duration, audioRef.current.currentTime + 5);
+              }
+              if (e.key === 'ArrowLeft' && audioRef.current) {
+                audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 5);
+              }
             }}>
               <motion.div
                 className="player-progress-bar"
@@ -190,9 +269,9 @@ export function Footer() {
               />
             </div>
             <div className="player-time" style={{ fontWeight: '600', fontFamily: 'var(--font-mono)' }}>
-              {formatTime(progress / 100 * playerTracks[currentTrack].duration)}
+              {formatTime(currentTime)}
               <span> / </span>
-              {formatTime(playerTracks[currentTrack].duration)}
+              {formatTime(duration || playerTracks[currentTrack].duration)}
             </div>
           </div>
 
